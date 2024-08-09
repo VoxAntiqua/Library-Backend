@@ -121,7 +121,9 @@ const typeDefs = `
 
 const resolvers = {
   Query: {
-    dummy: () => 0,
+    bookCount: () => books.length,
+    authorCount: () => authors.length,
+    allBooks: () => books,
   },
 }
 
