@@ -150,6 +150,12 @@ const resolvers = {
     addBook: (root, args) => {
       const book = { ...args, id: uuid() }
       books = books.concat(book)
+      if (!authors.includes(book.author)) {
+        authors = authors.concat({
+          name: book.author,
+          id: uuid(),
+        })
+      }
       return book
     },
   },
