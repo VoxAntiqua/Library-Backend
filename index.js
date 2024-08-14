@@ -157,21 +157,19 @@ const typeDefs = `
 const resolvers = {
   Query: {
     bookCount: async () => Book.collection.countDocuments(),
-    authorCount: () => Author.collection.countDocuments(),
-    allBooks: (root, args) =>
-      books.filter(
-        book =>
-          (!args.author || book.author === args.author) &&
-          (!args.genre || book.genres.includes(args.genre))
-      ),
-    allAuthors: () =>
-      authors.map(author => ({
-        ...author,
-        bookCount: books.filter(book => book.author === author.name).length,
-      })),
+    authorCount: async () => Author.collection.countDocuments(),
+    allBooks: async (root, args) => {
+      // todo: implement filter by genre
+      return Book.find({}).populate('author')
+    },
+    allAuthors: async () => {
+      return Author.find({})
+    },
   },
   Author: {
-    bookCount: root => books.filter(book => book.author === root.name).length,
+    bookCount: async root => {
+      return await Book.countDocuments({ author: root._id })
+    },
   },
   Mutation: {
     addBook: async (root, args) => {
