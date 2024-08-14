@@ -1,6 +1,23 @@
 const { ApolloServer } = require('@apollo/server')
 const { startStandaloneServer } = require('@apollo/server/standalone')
 const { v1: uuid } = require('uuid')
+const mongoose = require('mongoose')
+mongoose.set('strictQuery', false)
+const Book = require('./models/book')
+const Author = require('./models/author')
+
+require('dotenv').config()
+
+const MONGODB_URI = process.env.MONGODB_URI
+
+console.log('connecting to', MONGODB_URI)
+
+mongoose
+  .connect(MONGODB_URI)
+  .then(() => {
+    console.log('connected to', MONGODB_URI)
+  })
+  .catch(error => console.log('error connecting to MongoDB:', error.message))
 
 let authors = [
   {
@@ -98,7 +115,7 @@ const typeDefs = `
   type Book {
     title: String!
     published: Int!
-    author: String!
+    author: Author!
     genres: [String!]!
     id: ID!
   }
@@ -129,6 +146,11 @@ const typeDefs = `
       name: String!
       setBornTo: Int!
     ): Author
+
+    addAuthor(
+      name: String!
+      born: Int
+    ): Author
   }
 `
 
@@ -152,16 +174,15 @@ const resolvers = {
     bookCount: root => books.filter(book => book.author === root.name).length,
   },
   Mutation: {
-    addBook: (root, args) => {
-      const book = { ...args, id: uuid() }
-      books = books.concat(book)
-      if (!authors.includes(book.author)) {
-        authors = authors.concat({
-          name: book.author,
-          id: uuid(),
-        })
-      }
-      return book
+    addBook: async (root, args) => {
+      let author = await Author.findOne({ name: args.author })
+      const book = new Book({ ...args, author: author })
+      return book.save()
+    },
+
+    addAuthor: async (root, args) => {
+      const author = new Author({ ...args })
+      return author.save()
     },
 
     editAuthor: (root, args) => {
