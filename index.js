@@ -246,8 +246,18 @@ const resolvers = {
       return book
     },
 
-    addAuthor: async (root, args) => {
+    addAuthor: async (root, args, context) => {
       const author = new Author({ ...args })
+      const currentUser = context.currentUser
+
+      if (!currentUser) {
+        throw new GraphQLError('Not authenticated', {
+          extensions: {
+            code: 'BAD_USER_INPUT',
+          },
+        })
+      }
+
       try {
         await author.save()
       } catch (error) {
@@ -262,7 +272,17 @@ const resolvers = {
       return author
     },
 
-    editAuthor: async (root, args) => {
+    editAuthor: async (root, args, context) => {
+      const currentUser = context.currentUser
+
+      if (!currentUser) {
+        throw new GraphQLError('Not authenticated', {
+          extensions: {
+            code: 'BAD_USER_INPUT',
+          },
+        })
+      }
+
       const author = await Author.findOne({ name: args.name })
       author.born = args.setBornTo
       try {
