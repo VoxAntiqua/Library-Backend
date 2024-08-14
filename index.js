@@ -209,9 +209,29 @@ const resolvers = {
     },
   },
   Mutation: {
-    addBook: async (root, args) => {
+    addBook: async (root, args, context) => {
       let author = await Author.findOne({ name: args.author })
+
+      if (!author) {
+        throw new GraphQLError('Author not found', {
+          extensions: {
+            code: 'BAD_USER_INPUT',
+            invalidArgs: args.author,
+          },
+        })
+      }
+
       const book = new Book({ ...args, author: author })
+      const currentUser = context.currentUser
+
+      if (!currentUser) {
+        throw new GraphQLError('Not authenticated', {
+          extensions: {
+            code: 'BAD_USER_INPUT',
+          },
+        })
+      }
+
       try {
         await book.save()
       } catch (error) {
