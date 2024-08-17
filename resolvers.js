@@ -29,43 +29,41 @@ const resolvers = {
       return Book.find(query).populate('author')
     },
     allAuthors: async (root, args) => {
-      return Author.find({})
+      return Author.find({}).populate('books')
     },
     me: (root, args, context) => {
       return context.currentUser
     },
   },
   Author: {
-    bookCount: async root => {
-      return await Book.countDocuments({ author: root._id })
+    bookCount: root => {
+      return root.books.length
     },
   },
   Mutation: {
     addBook: async (root, args, context) => {
-      let author = await Author.findOne({ name: args.author })
-
-      if (!author) {
-        throw new GraphQLError('Author not found', {
-          extensions: {
-            code: 'BAD_USER_INPUT',
-            invalidArgs: args.author,
-          },
-        })
-      }
-
-      const book = new Book({ ...args, author: author })
       const currentUser = context.currentUser
-
       if (!currentUser) {
         throw new GraphQLError('Not authenticated', {
-          extensions: {
-            code: 'BAD_USER_INPUT',
-          },
+          extensions: { code: 'BAD_USER_INPUT' },
         })
       }
 
+      let author = await Author.findOne({ name: args.author })
+      if (!author) {
+        author = new Author({ name: args.author })
+        await author.save()
+      }
+
+      const book = new Book({ ...args, author: author._id })
       try {
         await book.save()
+
+        author.books.push(book._id)
+        await author.save()
+        const populatedBook = await book.populate('author')
+        pubsub.publish('BOOK_ADDED', { bookAdded: populatedBook })
+        return populatedBook
       } catch (error) {
         throw new GraphQLError('Saving book failed', {
           extensions: {
@@ -75,10 +73,6 @@ const resolvers = {
           },
         })
       }
-
-      pubsub.publish('BOOK_ADDED', { bookAdded: book })
-
-      return book
     },
 
     addAuthor: async (root, args, context) => {
